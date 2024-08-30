@@ -99,6 +99,7 @@ public class Server {
     }
 
     public void setLastBeat(LastBeat lastBeat) {
+        if (this.lastBeat.timestamp.equals(lastBeat.timestamp)) return;
         if (leaderboardOfToday.isEmpty() || leaderboardOfToday.size() < 3) {
             leaderboardOfToday.add(lastBeat);
         } else {
