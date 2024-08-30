@@ -4,7 +4,7 @@
     <script src="https://kit.fontawesome.com/29e423567a.js" crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beating Heart with BPM Counter</title>
+    <title>Heart My Beat Online</title>
     <style>
         body {
             display: flex;
@@ -18,6 +18,51 @@
 
         .container {
             text-align: center;
+        }
+
+        .leaderboard {
+            top: 50%;
+            transform: translateY(-50%);
+            width: 150px;
+            background-color: #fff;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #left {
+            position: absolute;
+            left: 20px;
+        }
+
+        #right {
+            position: absolute;
+            right: 20px;
+        }
+
+        .leaderboard h3 {
+            text-align: center;
+            margin: 0;
+            margin-bottom: 10px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .leaderboard ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .leaderboard li {
+            font-size: 16px;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .leaderboard li:last-child {
+            border-bottom: none;
         }
 
         @keyframes beat {
@@ -48,12 +93,27 @@
     </style>
 </head>
 <body>
+<div class="leaderboard" id="left">
+    <h3>Leaderboard Today</h3>
+    <ul>
+        <li th:each="beat,iter : ${board}" th:text="${iter.count} + '. ' + ${beat.beat} + ' BPM at ' + ${beat.timestamp}">1. 120 BPM at 30.08.2024</li>
+    </ul>
+</div>
+<div class="leaderboard" id="right">
+    <h3>Leaderboard All</h3>
+    <ul>
+        <li>NOT IMPLEMENTED YET GANG</li>
+        <li>1. 120 BPM at 30.08.2024</li>
+        <li>2. 110 BPM at 30.08.2024</li>
+        <li>3. 105 BPM at 30.08.2024</li>
+    </ul>
+</div>
 <div class="container">
     <div class="heart">
         <i class="fa-solid fa-heart"></i>
     </div>
-    <div id="bpmCounter" th:text="${last.beat}"></div>
-    <div id="lastUpdate" th:text="@{'Last updated: ' + ${last.timestamp}}"></div>
+    <div id="bpmCounter" th:text="${last.beat}">90</div>
+    <div id="lastUpdate" th:text="@{'Last updated: ' + ${last.timestamp}}">9/11</div>
 </div>
 </body>
 </html>

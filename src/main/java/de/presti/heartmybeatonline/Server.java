@@ -19,10 +19,11 @@ public class Server {
     private LastBeat lastBeat;
     private String token;
 
-    private List<LastBeat> leaderboard;
+    private final List<LastBeat> leaderboardOfToday = new java.util.ArrayList<>();
 
     // Threads.
     Thread amIAliveOrSomething;
+    Thread resetLeaderboard;
 
     public Server() {
         if (instance != null) {
@@ -30,11 +31,22 @@ public class Server {
         }
 
         instance = this;
-        lastBeat = new LastBeat();
-        lastBeat.beat = 90;
-        lastBeat.timestamp = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-        setLastBeat(lastBeat);
+        resetLeaderboard = new Thread(() -> {
+            while (resetLeaderboard != null && !resetLeaderboard.isInterrupted()) {
+                if (ZonedDateTime.now().getHour() == 0 && ZonedDateTime.now().getMinute() == 0) {
+                    leaderboardOfToday.clear();
+                }
+
+                try {
+                    Thread.sleep(Duration.ofMinutes(1).toMillis());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        resetLeaderboard.start();
 
         amIAliveOrSomething = new Thread(() -> {
             while (amIAliveOrSomething != null && !amIAliveOrSomething.isInterrupted()) {
@@ -87,24 +99,29 @@ public class Server {
     }
 
     public void setLastBeat(LastBeat lastBeat) {
-        if (leaderboard.isEmpty() || leaderboard.size() < 3) {
-            leaderboard.add(lastBeat);
+        if (leaderboardOfToday.isEmpty() || leaderboardOfToday.size() < 3) {
+            leaderboardOfToday.add(lastBeat);
         } else {
-            for (LastBeat beat : leaderboard) {
+            boolean hasHigherValue = false;
+            for (LastBeat beat : leaderboardOfToday) {
                 if (beat.beat < lastBeat.beat) {
-                    leaderboard.remove(beat);
-                    leaderboard.add(lastBeat);
+                    hasHigherValue = true;
                     break;
                 }
             }
-            leaderboard.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+
+            if (hasHigherValue) {
+                leaderboardOfToday.remove(leaderboardOfToday.size() - 1);
+                leaderboardOfToday.add(lastBeat);
+                leaderboardOfToday.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+            }
         }
 
         this.lastBeat = lastBeat;
     }
 
     public List<LastBeat> getLeaderboard() {
-        return leaderboard;
+        return leaderboardOfToday;
     }
 
     public void setToken(String token) {
