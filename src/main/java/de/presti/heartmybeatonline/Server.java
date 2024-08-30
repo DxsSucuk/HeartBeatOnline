@@ -8,16 +8,18 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class Server {
 
     private static Server instance;
-    private LastBeat lastBeat, highBeat;
+    private LastBeat lastBeat;
     private String token;
+
+    private List<LastBeat> leaderboard;
 
     // Threads.
     Thread amIAliveOrSomething;
@@ -85,19 +87,24 @@ public class Server {
     }
 
     public void setLastBeat(LastBeat lastBeat) {
-        if (highBeat == null || lastBeat.beat > highBeat.beat) {
-            setHighBeat(lastBeat);
+        if (leaderboard.isEmpty() || leaderboard.size() < 3) {
+            leaderboard.add(lastBeat);
+        } else {
+            for (LastBeat beat : leaderboard) {
+                if (beat.beat < lastBeat.beat) {
+                    leaderboard.remove(beat);
+                    leaderboard.add(lastBeat);
+                    break;
+                }
+            }
+            leaderboard.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
         }
 
         this.lastBeat = lastBeat;
     }
 
-    public LastBeat getHighBeat() {
-        return highBeat;
-    }
-
-    public void setHighBeat(LastBeat highBeat) {
-        this.highBeat = highBeat;
+    public List<LastBeat> getLeaderboard() {
+        return leaderboard;
     }
 
     public void setToken(String token) {

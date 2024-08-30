@@ -16,7 +16,7 @@ public class MainController {
     @RequestMapping("/")
     public String index(Model model) {
         model.addAttribute("last", Server.getInstance().getLastBeat());
-        model.addAttribute("high", Server.getInstance().getHighBeat());
+        model.addAttribute("board", Server.getInstance().getLeaderboard());
         return "index";
     }
 }
