@@ -1,9 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" href="https://www.presti.me/assets/img/presti.png"/>
     <script src="https://kit.fontawesome.com/29e423567a.js" crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Heart My Beat Online">
+    <meta property="og:type" content="website">
+    <meta property="theme-color" content="#F50000">
+    <meta property="application-name" content="HMBO">
+    <meta property="description" content="Look at my silly little hearbeat fighting to get to the top of the leaderboard!">
+    <meta property="og:description" content="Look at my silly little hearbeat fighting to get to the top of the leaderboard!">
+    <meta property="og:image" content="https://www.presti.me/assets/img/presti.png">
+    <meta property="twitter:title" content="Heart My Beat Online">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:description" content="Look at my silly little hearbeat fighting to get to the top of the leaderboard">
+    <meta property="twitter:image" content="https://www.presti.me/assets/img/presti.png">
+    <link type="application/json+oembed" href="https://ree6.de/assets/oembed.json">
     <title>Heart My Beat Online</title>
     <style>
         body {
@@ -113,7 +126,7 @@
         <i class="fa-solid fa-heart"></i>
     </div>
     <div id="bpmCounter" th:text="${last != null ? last.beat : '90'}">90</div>
-    <div id="lastUpdate" th:text="@{'Last updated: ' + ${last != null ? last.beat : '2024'}}">9/11</div>
+    <div id="lastUpdate" th:text="@{'Last updated: ' + ${last != null ? last.timestamp : '2024'}}">9/11</div>
 </div>
 </body>
 </html>
