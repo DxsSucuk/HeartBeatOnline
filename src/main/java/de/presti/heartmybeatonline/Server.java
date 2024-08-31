@@ -1,13 +1,13 @@
 package de.presti.heartmybeatonline;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import de.presti.heartmybeatonline.util.LastBeat;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +19,8 @@ public class Server {
     private static Server instance;
     private String authToken;
     private String lastToken;
+
+    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     private final List<LastBeat> beatsOfToday = new java.util.ArrayList<>();
     private final List<LastBeat> leaderboardOfToday = new java.util.ArrayList<>();
@@ -34,6 +36,8 @@ public class Server {
         }
 
         instance = this;
+
+        loadAllTimeLeaderboard();
 
         resetLeaderboard = new Thread(() -> {
             while (resetLeaderboard != null && !resetLeaderboard.isInterrupted()) {
@@ -119,8 +123,11 @@ public class Server {
 
     public void addToLeaderboard(LastBeat lastBeat) {
         leaderboardOfToday.add(lastBeat);
+        if (leaderboardOfAllTime.stream().anyMatch(beat -> beat.timestamp.equals(lastBeat.timestamp))) return;
+
         if (leaderboardOfAllTime.isEmpty() || leaderboardOfAllTime.size() < 3) {
             leaderboardOfAllTime.add(lastBeat);
+            saveAllTimeLeaderboard();
         } else {
             boolean hasHigherValue = false;
             for (LastBeat beatEntry : leaderboardOfAllTime) {
@@ -134,7 +141,45 @@ public class Server {
                 leaderboardOfAllTime.remove(leaderboardOfAllTime.size() - 1);
                 leaderboardOfAllTime.add(lastBeat);
                 leaderboardOfAllTime.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+                saveAllTimeLeaderboard();
             }
+        }
+    }
+
+    public void loadAllTimeLeaderboard() {
+        Path pathToLeaderboard = Path.of("leaderboard.json");
+        if (Files.exists(pathToLeaderboard)) {
+            try {
+                String jsonString = Files.readString(pathToLeaderboard);
+                JsonArray jsonArray = JsonParser.parseString(jsonString).getAsJsonArray();
+                for (JsonElement element : jsonArray) {
+                    if (!element.isJsonObject()) continue;
+                    JsonObject jsonObject = element.getAsJsonObject();
+                    LastBeat lastBeat = new LastBeat();
+                    lastBeat.beat = jsonObject.get("beat").getAsDouble();
+                    lastBeat.timestamp = jsonObject.get("timestamp").getAsString();
+                    leaderboardOfAllTime.add(lastBeat);
+                }
+
+                leaderboardOfAllTime.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void saveAllTimeLeaderboard() {
+        JsonArray jsonArray = new JsonArray();
+        leaderboardOfAllTime.forEach(lastBeat -> {
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty("beat", lastBeat.beat);
+            jsonObject.addProperty("timestamp", lastBeat.timestamp);
+            jsonArray.add(jsonObject);
+        });
+        try {
+            Files.writeString(new java.io.File("leaderboard.json").toPath(), gson.toJson(jsonArray), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
