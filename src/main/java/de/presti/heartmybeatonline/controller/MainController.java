@@ -17,6 +17,7 @@ public class MainController {
     public String index(Model model) {
         model.addAttribute("last", Server.getInstance().getLastBeat());
         model.addAttribute("board", Server.getInstance().getLeaderboard());
+        model.addAttribute("boardAllTime", Server.getInstance().getLeaderboardAllTime());
         return "index";
     }
 }

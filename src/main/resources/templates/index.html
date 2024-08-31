@@ -109,14 +109,29 @@
 <div class="leaderboard" id="left">
     <h3>Leaderboard Today</h3>
     <ul>
-        <li th:each="beat,iter : ${board}" th:text="${iter.count} + '. ' + ${beat.beat} + ' BPM at ' + ${beat.timestamp}">1. 120 BPM at 30.08.2024</li>
+        <li th:each="beat,iter : ${board}">
+            <span th:text="${iter.count} + '. ' + ${beat.beat} + ' BPM at '">
+                1. 120 BPM at
+            </span>
+            <time th:datetime="${beat.timestamp}" class="short">
+                2024-08-30T22:02:57+00:00
+            </time>
+        </li>
     </ul>
 </div>
 <div class="leaderboard" id="right">
     <h3>Leaderboard All</h3>
     <ul>
-        <li>NOT IMPLEMENTED YET GANG</li>
-        <!--<li>1. 120 BPM at 30.08.2024</li>
+        <li th:each="beat,iter : ${boardAllTime}">
+            <span th:text="${iter.count} + '. ' + ${beat.beat} + ' BPM at '">
+                1. 120 BPM at
+            </span>
+            <time th:datetime="${beat.timestamp}" class="full">
+                2024-08-30T22:02:57+00:00
+            </time>
+        </li>
+        <!--<li>NOT IMPLEMENTED YET GANG</li>
+        <li>1. 120 BPM at 30.08.2024</li>
         <li>2. 110 BPM at 30.08.2024</li>
         <li>3. 105 BPM at 30.08.2024</li>-->
     </ul>
@@ -125,8 +140,27 @@
     <div class="heart">
         <i class="fa-solid fa-heart"></i>
     </div>
-    <div id="bpmCounter" th:text="${last != null ? last.beat : '90'}">90</div>
-    <div id="lastUpdate" th:text="@{'Last updated: ' + ${last != null ? last.timestamp : '2024'}}">9/11</div>
+    <div id="bpmCounter" th:text="${last != null ? last.beat : 'None'}">90</div>
+    <div id="lastUpdate">
+        <span>
+            Last updated:
+        </span>
+        <time th:datetime="${last != null ? last.timestamp : '2024-08-30T22:02:57+00:00'}" class="full">
+            2024-08-30T22:02:57+00:00
+        </time>
+    </div>
 </div>
 </body>
+<script>
+    document.querySelectorAll('time').forEach($e => {
+        const date = new Date($e.dateTime);
+        if ($e.classList.contains('short')) {
+            // output the localized date
+            $e.innerHTML = date.toLocaleTimeString();
+        } else {
+            // output the localized date and time
+            $e.innerHTML = date.toLocaleString();
+        }
+    });
+</script>
 </html>
