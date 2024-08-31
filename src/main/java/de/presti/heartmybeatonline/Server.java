@@ -20,11 +20,15 @@ public class Server {
     private String authToken;
     private String lastToken;
 
+    private final int minutesToWait = 5;
+
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     private final List<LastBeat> beatsOfToday = new java.util.ArrayList<>();
     private final List<LastBeat> leaderboardOfToday = new java.util.ArrayList<>();
     private final List<LastBeat> leaderboardOfAllTime = new java.util.ArrayList<>();
+
+    private ZonedDateTime nextPull;
 
     // Threads.
     Thread amIAliveOrSomething;
@@ -62,8 +66,9 @@ public class Server {
                 beatsOfToday.clear();
                 loadAllBeatsOfToday(lastToken);
 
+                nextPull = ZonedDateTime.now().plusMinutes(minutesToWait);
                 try {
-                    Thread.sleep(Duration.ofMinutes(10).toMillis());
+                    Thread.sleep(Duration.ofMinutes(minutesToWait).toMillis());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -81,7 +86,7 @@ public class Server {
         JsonElement dataArray = apiObject.get("data");
 
         if (dataArray.isJsonArray() && !dataArray.getAsJsonArray().isEmpty()) {
-            System.out.println("Found " + dataArray.getAsJsonArray().size() + " entries.");
+            System.out.println("Found " + dataArray.getAsJsonArray().size() + " entries with token " + token + ".");
             for (JsonElement jsonElement : dataArray.getAsJsonArray()) {
                 if (!jsonElement.isJsonObject()) continue;
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
@@ -228,5 +233,9 @@ public class Server {
 
     public String getAuthToken() {
         return authToken;
+    }
+
+    public String getNextPull() {
+        return nextPull != null ? nextPull.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) : null;
     }
 }

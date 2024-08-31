@@ -18,6 +18,7 @@ public class MainController {
         model.addAttribute("last", Server.getInstance().getLastBeat());
         model.addAttribute("board", Server.getInstance().getLeaderboard());
         model.addAttribute("boardAllTime", Server.getInstance().getLeaderboardAllTime());
+        model.addAttribute("nextPull", Server.getInstance().getNextPull());
         return "index";
     }
 }

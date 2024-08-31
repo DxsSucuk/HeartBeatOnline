@@ -54,6 +54,13 @@
             right: 20px;
         }
 
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: #555;
+        }
+
         .leaderboard h3 {
             text-align: center;
             margin: 0;
@@ -149,6 +156,14 @@
             2024-08-30T22:02:57+00:00
         </time>
     </div>
+</div>
+<div class="footer">
+        <span>
+            Next Data pull:
+        </span>
+    <time th:datetime="${nextPull != null ? nextPull : '2024-08-30T22:02:57+00:00'}" class="full">
+        2024-08-30T22:02:57+00:00
+    </time>
 </div>
 </body>
 <script>
