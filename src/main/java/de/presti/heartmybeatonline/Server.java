@@ -127,7 +127,7 @@ public class Server {
     }
 
     public void addToLeaderboard(LastBeat lastBeat) {
-        if (leaderboardOfAllTime.stream().noneMatch(beat -> beat.timestamp.equals(lastBeat.timestamp))) {
+        if (leaderboardOfToday.stream().noneMatch(beat -> beat.timestamp.equals(lastBeat.timestamp))) {
             leaderboardOfToday.add(lastBeat);
         }
 
