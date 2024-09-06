@@ -16,8 +16,8 @@ public class MainController {
     @RequestMapping("/")
     public String index(Model model) {
         model.addAttribute("last", Server.getInstance().getLastBeat());
-        model.addAttribute("board", Server.getInstance().getLeaderboard());
-        model.addAttribute("boardAllTime", Server.getInstance().getLeaderboardAllTime());
+        model.addAttribute("board", Server.getInstance().getLeaderboardOfToday());
+        model.addAttribute("boardAllTime", Server.getInstance().getLeaderboardOfAllTime());
         model.addAttribute("nextPull", Server.getInstance().getNextPull());
         return "index";
     }

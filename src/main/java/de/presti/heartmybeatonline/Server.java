@@ -1,7 +1,10 @@
 package de.presti.heartmybeatonline;
 
 import com.google.gson.*;
-import de.presti.heartmybeatonline.util.LastBeat;
+import de.presti.heartmybeatonline.util.HeartBeat;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -11,24 +14,40 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+@Slf4j
 public class Server {
 
+    @Getter
     private static Server instance;
+
+    @Setter
+    @Getter
     private String authToken;
+
+    @Getter
     private String lastToken;
 
-    private final int minutesToWait = 5;
+    @Getter
+    private final int minutesToWait = 5, leaderboardSize = 3;
 
-    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-    private final List<LastBeat> beatsOfToday = new java.util.ArrayList<>();
-    private final List<LastBeat> leaderboardOfToday = new java.util.ArrayList<>();
-    private final List<LastBeat> leaderboardOfAllTime = new java.util.ArrayList<>();
+    @Getter
+    private final List<HeartBeat> beatsOfToday = new java.util.ArrayList<>();
+
+    @Getter
+    private final List<HeartBeat> leaderboardOfToday = new java.util.ArrayList<>();
+
+    @Getter
+    private final List<HeartBeat> leaderboardOfAllTime = new java.util.ArrayList<>();
 
     private ZonedDateTime nextPull;
+
+    private final Comparator<HeartBeat> comparator = (o1, o2) -> Double.compare(o2.beat, o1.beat);
 
     // Threads.
     Thread amIAliveOrSomething;
@@ -79,6 +98,7 @@ public class Server {
 
     public void loadAllBeatsOfToday(String token) {
         lastToken = token;
+        log.info("Loading beats of today with token {}", token);
         JsonObject apiObject = requestBeats(token, ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0), ZonedDateTime.now()).getAsJsonObject();
         if (apiObject.isJsonNull()) return;
         if (!apiObject.has("data")) return;
@@ -86,14 +106,15 @@ public class Server {
         JsonElement dataArray = apiObject.get("data");
 
         if (dataArray.isJsonArray() && !dataArray.getAsJsonArray().isEmpty()) {
-            System.out.println("Found " + dataArray.getAsJsonArray().size() + " entries with token " + token + ".");
+            log.info("Found {} entries with token {}.", dataArray.getAsJsonArray().size(), token);
             for (JsonElement jsonElement : dataArray.getAsJsonArray()) {
                 if (!jsonElement.isJsonObject()) continue;
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
-                LastBeat beat = new LastBeat();
+                HeartBeat beat = new HeartBeat();
                 beat.beat = jsonObject.get("bpm").getAsDouble();
                 beat.timestamp = jsonObject.get("timestamp").getAsString();
-                addToList(beat);
+                beat.source = jsonObject.get("source").getAsString();
+                addToBeatsOfToday(beat);
             }
         }
 
@@ -102,14 +123,14 @@ public class Server {
         }
     }
 
-    public void addToList(LastBeat beat) {
-        if (beatsOfToday.stream().anyMatch(lastBeat -> lastBeat.timestamp.equals(beat.timestamp))) return;
+    public void addToBeatsOfToday(HeartBeat beat) {
+        if (beatsOfToday.stream().anyMatch(heartBeat -> heartBeat.timestamp.equals(beat.timestamp))) return;
 
-        if (leaderboardOfToday.isEmpty() || leaderboardOfToday.size() < 3) {
+        if (leaderboardOfToday.isEmpty() || leaderboardOfToday.size() < leaderboardSize) {
             addToLeaderboard(beat);
         } else {
             boolean hasHigherValue = false;
-            for (LastBeat beatEntry : leaderboardOfToday) {
+            for (HeartBeat beatEntry : leaderboardOfToday) {
                 if (beatEntry.beat < beat.beat) {
                     hasHigherValue = true;
                     break;
@@ -117,38 +138,43 @@ public class Server {
             }
 
             if (hasHigherValue) {
-                leaderboardOfToday.remove(leaderboardOfToday.size() - 1);
+                ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfToday);
                 addToLeaderboard(beat);
-                leaderboardOfToday.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+                leaderboardOfToday.stream().min(Comparator.comparingDouble(o -> o.beat)).ifPresent(leaderboardOfToday::remove);
+                leaderboardOfToday.sort(comparator);
+                onDailyLeaderboardUpdate(previous, leaderboardOfToday);
             }
         }
 
         beatsOfToday.add(beat);
     }
 
-    public void addToLeaderboard(LastBeat lastBeat) {
-        if (leaderboardOfToday.stream().noneMatch(beat -> beat.timestamp.equals(lastBeat.timestamp))) {
-            leaderboardOfToday.add(lastBeat);
+
+    public void addToLeaderboard(HeartBeat heartBeat) {
+        if (leaderboardOfToday.stream().noneMatch(beat -> beat.timestamp.equals(heartBeat.timestamp))) {
+            leaderboardOfToday.add(heartBeat);
         }
 
-        if (leaderboardOfAllTime.stream().anyMatch(beat -> beat.timestamp.equals(lastBeat.timestamp))) return;
+        if (leaderboardOfAllTime.stream().anyMatch(beat -> beat.timestamp.equals(heartBeat.timestamp))) return;
 
-        if (leaderboardOfAllTime.isEmpty() || leaderboardOfAllTime.size() < 3) {
-            leaderboardOfAllTime.add(lastBeat);
+        if (leaderboardOfAllTime.isEmpty() || leaderboardOfAllTime.size() < leaderboardSize) {
+            leaderboardOfAllTime.add(heartBeat);
             saveAllTimeLeaderboard();
         } else {
             boolean hasHigherValue = false;
-            for (LastBeat beatEntry : leaderboardOfAllTime) {
-                if (beatEntry.beat < lastBeat.beat) {
+            for (HeartBeat beatEntry : leaderboardOfAllTime) {
+                if (beatEntry.beat < heartBeat.beat) {
                     hasHigherValue = true;
                     break;
                 }
             }
 
             if (hasHigherValue) {
-                leaderboardOfAllTime.remove(leaderboardOfAllTime.size() - 1);
-                leaderboardOfAllTime.add(lastBeat);
-                leaderboardOfAllTime.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+                ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfAllTime);
+                leaderboardOfAllTime.add(heartBeat);
+                leaderboardOfAllTime.stream().min(Comparator.comparingDouble(o -> o.beat)).ifPresent(leaderboardOfToday::remove);
+                leaderboardOfAllTime.sort(comparator);
+                onAllTimeLeaderboardUpdate(previous, leaderboardOfAllTime);
                 saveAllTimeLeaderboard();
             }
         }
@@ -163,13 +189,14 @@ public class Server {
                 for (JsonElement element : jsonArray) {
                     if (!element.isJsonObject()) continue;
                     JsonObject jsonObject = element.getAsJsonObject();
-                    LastBeat lastBeat = new LastBeat();
-                    lastBeat.beat = jsonObject.get("beat").getAsDouble();
-                    lastBeat.timestamp = jsonObject.get("timestamp").getAsString();
-                    leaderboardOfAllTime.add(lastBeat);
+                    HeartBeat heartBeat = new HeartBeat();
+                    heartBeat.beat = jsonObject.get("beat").getAsDouble();
+                    heartBeat.timestamp = jsonObject.get("timestamp").getAsString();
+                    heartBeat.source = jsonObject.get("source").getAsString();
+                    leaderboardOfAllTime.add(heartBeat);
                 }
 
-                leaderboardOfAllTime.sort((o1, o2) -> Double.compare(o2.beat, o1.beat));
+                leaderboardOfAllTime.sort(comparator);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -178,10 +205,11 @@ public class Server {
 
     public void saveAllTimeLeaderboard() {
         JsonArray jsonArray = new JsonArray();
-        leaderboardOfAllTime.forEach(lastBeat -> {
+        leaderboardOfAllTime.forEach(heartBeat -> {
             JsonObject jsonObject = new JsonObject();
-            jsonObject.addProperty("beat", lastBeat.beat);
-            jsonObject.addProperty("timestamp", lastBeat.timestamp);
+            jsonObject.addProperty("beat", heartBeat.beat);
+            jsonObject.addProperty("timestamp", heartBeat.timestamp);
+            jsonObject.addProperty("source", heartBeat.source);
             jsonArray.add(jsonObject);
         });
         try {
@@ -213,29 +241,17 @@ public class Server {
         return new JsonObject();
     }
 
-    public static Server getInstance() {
-        return instance;
+    public void onDailyLeaderboardUpdate(List<HeartBeat> previous, List<HeartBeat> current) {
+
     }
 
-    public LastBeat getLastBeat() {
+    public void onAllTimeLeaderboardUpdate(List<HeartBeat> previous, List<HeartBeat> current) {
+
+    }
+
+    public HeartBeat getLastBeat() {
         if (beatsOfToday.isEmpty()) return null;
         return beatsOfToday.get(beatsOfToday.size() - 1);
-    }
-
-    public List<LastBeat> getLeaderboard() {
-        return leaderboardOfToday;
-    }
-
-    public List<LastBeat> getLeaderboardAllTime() {
-        return leaderboardOfAllTime;
-    }
-
-    public void setAuthToken(String token) {
-        this.authToken = token;
-    }
-
-    public String getAuthToken() {
-        return authToken;
     }
 
     public String getNextPull() {
