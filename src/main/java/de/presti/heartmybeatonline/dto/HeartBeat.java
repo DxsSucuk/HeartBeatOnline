@@ -1,4 +1,4 @@
-package de.presti.heartmybeatonline.util;
+package de.presti.heartmybeatonline.dto;
 
 public class HeartBeat {
     public double beat;
