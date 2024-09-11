@@ -9,7 +9,8 @@ public class BackendApplication {
     public static void main(String[] args) throws Exception {
         SpringApplication.run(BackendApplication.class, args);
         new Server();
-        Server.getInstance().setAuthToken(args[0]);
+        if (args.length != 0)
+            Server.getInstance().setAuthToken(args[0]);
     }
 
 }

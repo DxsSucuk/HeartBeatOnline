@@ -2,9 +2,9 @@ package de.presti.heartmybeatonline;
 
 import com.google.gson.*;
 import de.presti.heartmybeatonline.dto.Gambler;
+import de.presti.heartmybeatonline.dto.GamblerSafe;
+import de.presti.heartmybeatonline.dto.Gambles;
 import de.presti.heartmybeatonline.dto.HeartBeat;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import okhttp3.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -50,6 +51,9 @@ public class Server {
 
     @Getter
     private final List<HeartBeat> leaderboardOfAllTime = new java.util.ArrayList<>();
+
+    @Getter
+    private final List<Gambles> gamblesOfToday = new ArrayList<>();
 
     private ZonedDateTime nextPull;
 
@@ -122,11 +126,7 @@ public class Server {
             for (JsonElement jsonElement : dataArray.getAsJsonArray()) {
                 if (!jsonElement.isJsonObject()) continue;
                 JsonObject jsonObject = jsonElement.getAsJsonObject();
-                HeartBeat beat = new HeartBeat();
-                beat.beat = jsonObject.get("bpm").getAsDouble();
-                beat.timestamp = jsonObject.get("timestamp").getAsString();
-                beat.source = jsonObject.get("source").getAsString();
-                addToBeatsOfToday(beat);
+                addToBeatsOfToday(HeartBeat.fromJson(jsonObject));
             }
         }
 
@@ -201,11 +201,7 @@ public class Server {
                 for (JsonElement element : jsonArray) {
                     if (!element.isJsonObject()) continue;
                     JsonObject jsonObject = element.getAsJsonObject();
-                    HeartBeat heartBeat = new HeartBeat();
-                    heartBeat.beat = jsonObject.get("beat").getAsDouble();
-                    heartBeat.timestamp = jsonObject.get("timestamp").getAsString();
-                    heartBeat.source = jsonObject.get("source").getAsString();
-                    leaderboardOfAllTime.add(heartBeat);
+                    leaderboardOfAllTime.add(HeartBeat.fromJson(jsonObject));
                 }
 
                 leaderboardOfAllTime.sort(comparator);
@@ -217,13 +213,7 @@ public class Server {
 
     public void saveAllTimeLeaderboard() {
         JsonArray jsonArray = new JsonArray();
-        leaderboardOfAllTime.forEach(heartBeat -> {
-            JsonObject jsonObject = new JsonObject();
-            jsonObject.addProperty("beat", heartBeat.beat);
-            jsonObject.addProperty("timestamp", heartBeat.timestamp);
-            jsonObject.addProperty("source", heartBeat.source);
-            jsonArray.add(jsonObject);
-        });
+        leaderboardOfAllTime.forEach(heartBeat -> jsonArray.add(heartBeat.toJson()));
         try {
             Files.writeString(Path.of("data", "leaderboard.json"), gson.toJson(jsonArray), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
@@ -270,27 +260,52 @@ public class Server {
         return nextPull != null ? nextPull.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) : null;
     }
 
-    public Gambler getGambler(String id, HttpServletResponse response) {
-        UUID uuid = UUID.randomUUID();
+    public Gambler getGambler(String id) {
+        return getGambler(id, false);
+    }
+
+    public Gambler createGambler() {
+        Gambler gambler = new Gambler(UUID.randomUUID(), generateToken(), generateName(), defaultMoney, 0);
+
+        saveGambler(gambler);
+
+        return gambler;
+    }
+
+    public Gambler getGambler(String id, boolean create) {
+        UUID uuid;
         try {
             uuid = UUID.fromString(id);
             final Path pathToGambler = Path.of("data", "gambler", uuid.toString() + ".json");
             if (Files.exists(pathToGambler)) {
                 String jsonString = Files.readString(pathToGambler);
                 JsonObject jsonObject = JsonParser.parseString(jsonString).getAsJsonObject();
-                return new Gambler(uuid, jsonObject.get("name").getAsString(), jsonObject.get("money").getAsInt(), jsonObject.get("wins").getAsInt());
+                return Gambler.fromJson(jsonObject);
             }
         } catch (Exception e) {
             log.error("Could not load gambler with id {}", id);
         }
 
-        response.addCookie(new Cookie("userId", uuid.toString()));
+        if (!create) return null;
 
-        Gambler gambler = new Gambler(uuid, generateName(), defaultMoney, 0);
+        return createGambler();
+    }
 
-        saveGambler(gambler);
+    public GamblerSafe getGamblerSafe(String id) {
+        return GamblerSafe.fromGambler(getGambler(id));
+    }
 
-        return gambler;
+    public boolean existGambler(String id) {
+        UUID uuid = null;
+        try {
+            uuid = UUID.fromString(id);
+            final Path pathToGambler = Path.of("data", "gambler", uuid.toString() + ".json");
+            return Files.exists(pathToGambler);
+        } catch (Exception e) {
+            log.error("Could not load gambler with id {}", id);
+        }
+
+        return false;
     }
 
     public void saveGambler(Gambler gambler) {
@@ -305,7 +320,45 @@ public class Server {
         }
     }
 
+    public List<Gambles> getGamblers() {
+        return gamblesOfToday.stream().sorted(Comparator.comparingInt(o -> o.gambleAmount)).limit(5).toList();
+    }
+
+    public boolean gambleMoney(String userId, int beat, int amount, String token) {
+        Gambler gambler = getGambler(userId);
+        if (!gambler.authToken.equals(token)) return false;
+        if (gambler.money < amount) return false;
+        if (amount < minimumBet) return false;
+
+        gambler.money -= amount;
+        saveGambler(gambler);
+
+        Gambles gamble = new Gambles(gambler, UUID.randomUUID(), amount, beat, ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        gamblesOfToday.add(gamble);
+
+        return true;
+    }
+
     public String generateName() {
         return "Gambler#" + new SecureRandom().nextInt(99999);
+    }
+
+    public String generateToken() {
+        final String characters = "0123456789abcdefghijklmnopqrstuvwxyz-_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        final SecureRandom secureRandom;
+        try {
+            secureRandom = SecureRandom.getInstanceStrong();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        // 9 is the length of the string you want
+
+        return secureRandom
+                .ints(9, 0, characters.length()) // 9 is the length of the string you want
+                .mapToObj(characters::charAt)
+                .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append)
+                .toString();
     }
 }
