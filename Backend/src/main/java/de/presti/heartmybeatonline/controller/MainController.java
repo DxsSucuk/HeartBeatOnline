@@ -22,13 +22,11 @@ public class MainController {
      * @return the HTML page
      */
     @RequestMapping("/")
-    public String index(Model model, @CookieValue(value = "userId", defaultValue = "RAWRXD") String userId) {
-        model.addAttribute("last", Server.getInstance().getLastBeat());
-        model.addAttribute("board", Server.getInstance().getLeaderboardOfToday());
-        model.addAttribute("boardAllTime", Server.getInstance().getLeaderboardOfAllTime());
-        model.addAttribute("nextPull", Server.getInstance().getNextPull());
-        model.addAttribute("gambler", Server.getInstance().getGambler(userId));
-        return "index";
+    public ResponseBase<String> index() {
+        ResponseBase<String> response = new ResponseBase<>();
+        response.success = true;
+        response.message = "Error feet pics soon or something dunno.";
+        return response;
     }
 
     @CrossOrigin(origins = "*", allowedHeaders = "*")

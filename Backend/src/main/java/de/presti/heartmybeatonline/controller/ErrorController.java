@@ -1,5 +1,7 @@
 package de.presti.heartmybeatonline.controller;
 
+import com.google.gson.JsonObject;
+import de.presti.heartmybeatonline.controller.response.ResponseBase;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +27,10 @@ public class ErrorController implements org.springframework.boot.web.servlet.err
      * @return {@link String} for Thyme to the HTML Page.
      */
     @GetMapping(value = "/error")
-    public String error(WebRequest webRequest) {
-        return "error";
+    public ResponseBase<String> error(WebRequest webRequest) {
+        ResponseBase<String> response = new ResponseBase<>();
+        response.success = false;
+        response.message = "Gang you retarded.";
+        return response;
     }
 }

@@ -14,7 +14,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         log.info("Setting up CORS");
-        String allowedDomain = "*";
+        String allowedDomain = "https://heart.presti.me";
         log.info("Allowed Domain: " + allowedDomain);
         registry.addMapping("/**").allowedOriginPatterns(allowedDomain);
     }
