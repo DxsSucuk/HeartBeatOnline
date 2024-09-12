@@ -8,25 +8,28 @@
 	import { storePopup } from '@skeletonlabs/skeleton';
 	storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
-	import { initializeStores, Modal } from '@skeletonlabs/skeleton';
+	import { initializeStores, Modal, Toast } from '@skeletonlabs/skeleton';
 	import { createGambler, getSelfGambler, type Gambler } from '$lib/client';
+	import gamblerWriteable from '$lib/gamblerWriteable';
 	import { onMount } from 'svelte';
-
-	let gambler: Gambler;
 
 	onMount(async () => {
 		let user = await getSelfGambler();
 		if (user == undefined) {
+			console.log('Creating user');
 			user = await createGambler();
 		}
 
-		if (user == undefined) {
-			gambler = user;
+		if (user != undefined) {
+			console.log(user);
+			$gamblerWriteable = user;
 		}
-	})
+	});
 
 	initializeStores();
 </script>
+
+<Toast />
 <Modal />
 <!-- App Shell -->
 <AppShell>
@@ -40,7 +43,7 @@
 			<svelte:fragment slot="trail">
 				<span class="btn variant-filled-primary">
 					<span><i class="fa-solid fa-user-circle"></i></span>
-					<span>{gambler !== undefined ? gambler.money : '0'}$</span>
+					<span>{$gamblerWriteable !== undefined ? $gamblerWriteable.money : '0'}$</span>
 				</span>
 			</svelte:fragment>
 		</AppBar>

@@ -13,7 +13,7 @@ public class HeartBeat {
 
     public static HeartBeat fromJson(JsonObject json) {
         HeartBeat beat = new HeartBeat();
-        beat.beat = json.get("beat").getAsDouble();
+        beat.beat = json.has("beat") ? json.get("beat").getAsDouble() : json.get("bpm").getAsDouble();
         beat.timestamp = json.get("timestamp").getAsString();
         beat.source = json.get("source").getAsString();
         return beat;

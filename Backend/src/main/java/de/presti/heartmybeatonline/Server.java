@@ -39,7 +39,7 @@ public class Server {
     private String lastToken;
 
     @Getter
-    private final int minutesToWait = 5, leaderboardSize = 3, defaultMoney = 1000, minimumBet = 100;
+    private final int minutesToWait = 5, leaderboardSize = 3, defaultMoney = 1000, minimumBet = 1;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
@@ -58,6 +58,7 @@ public class Server {
     private ZonedDateTime nextPull;
 
     private final Comparator<HeartBeat> comparator = (o1, o2) -> Double.compare(o2.beat, o1.beat);
+    private final Comparator<Gambles> comparatorGamble = (o1, o2) -> Double.compare(o2.gambleAmount, o1.gambleAmount);
 
     // Threads.
     Thread amIAliveOrSomething;
@@ -71,6 +72,12 @@ public class Server {
         instance = this;
 
         try {
+            Files.createDirectory(Path.of("data"));
+        } catch (IOException e) {
+            log.warn("Could not create directory data!");
+        }
+
+        try {
             Files.createDirectory(Path.of("data", "gambler"));
         } catch (IOException e) {
             log.warn("Could not create directory gambler!");
@@ -82,8 +89,21 @@ public class Server {
             while (resetLeaderboard != null && !resetLeaderboard.isInterrupted()) {
                 ZonedDateTime now = ZonedDateTime.now();
                 if (now.getHour() == 0 && now.getMinute() == 0) {
+                    log.info("Resetting leaderboard...");
                     lastToken = null;
+                    double highestBeat = leaderboardOfToday.get(0).beat;
+                    double prizePool = gamblesOfToday.stream().mapToDouble(Gambles::getGambleAmount).sum();
+                    List<Gambles> winners = gamblesOfToday.stream().filter(gamble -> gamble.heartBeat == highestBeat).toList();
+                    if (!winners.isEmpty()) {
+                        int prize = (int) (prizePool / winners.size());
+                        for (Gambles winner : winners) {
+                            Gambler gambler = getGambler(winner.user.id.toString());
+                            gambler.money += prize;
+                            saveGambler(gambler);
+                        }
+                    }
                     leaderboardOfToday.clear();
+                    gamblesOfToday.clear();
                 }
 
                 try {
@@ -152,8 +172,8 @@ public class Server {
             if (hasHigherValue) {
                 ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfToday);
                 addToLeaderboard(beat);
-                leaderboardOfToday.stream().min(Comparator.comparingDouble(o -> o.beat)).ifPresent(leaderboardOfToday::remove);
                 leaderboardOfToday.sort(comparator);
+                leaderboardOfToday.remove(leaderboardOfToday.size()-1);
                 onDailyLeaderboardUpdate(previous, leaderboardOfToday, beat);
             }
         }
@@ -184,8 +204,8 @@ public class Server {
             if (hasHigherValue) {
                 ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfAllTime);
                 leaderboardOfAllTime.add(heartBeat);
-                leaderboardOfAllTime.stream().min(Comparator.comparingDouble(o -> o.beat)).ifPresent(leaderboardOfToday::remove);
                 leaderboardOfAllTime.sort(comparator);
+                leaderboardOfAllTime.remove(leaderboardOfAllTime.size()-1);
                 onAllTimeLeaderboardUpdate(previous, leaderboardOfAllTime, heartBeat);
                 saveAllTimeLeaderboard();
             }
@@ -205,6 +225,9 @@ public class Server {
                 }
 
                 leaderboardOfAllTime.sort(comparator);
+                if (leaderboardOfAllTime.size() > leaderboardSize) {
+                    leaderboardOfAllTime.subList(leaderboardSize, leaderboardOfAllTime.size()).clear();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -310,18 +333,14 @@ public class Server {
 
     public void saveGambler(Gambler gambler) {
         try {
-            JsonObject jsonObject = new JsonObject();
-            jsonObject.addProperty("name", gambler.name);
-            jsonObject.addProperty("money", gambler.money);
-            jsonObject.addProperty("wins", gambler.wins);
-            Files.writeString(Path.of("data", "gambler", gambler.id.toString() + ".json"), gson.toJson(jsonObject), java.nio.charset.StandardCharsets.UTF_8);
+            Files.writeString(Path.of("data", "gambler", gambler.id.toString() + ".json"), gson.toJson(gambler.toJson()), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.error("Could not save gambler with id {}", gambler.id, e);
         }
     }
 
     public List<Gambles> getGamblers() {
-        return gamblesOfToday.stream().sorted(Comparator.comparingInt(o -> o.gambleAmount)).limit(5).toList();
+        return gamblesOfToday.stream().sorted(comparatorGamble).limit(5).toList();
     }
 
     public boolean gambleMoney(String userId, int beat, int amount, String token) {

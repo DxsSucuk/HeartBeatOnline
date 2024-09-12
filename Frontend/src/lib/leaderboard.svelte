@@ -15,7 +15,7 @@
 			{#each entries as entry, index}
 				<li>
 					<span>
-						{index}. {entry.beat} BPM at
+						{index + 1}. {entry.beat} BPM at
 					</span>
 					<Time
 						{relative}
@@ -32,7 +32,7 @@
 	.leaderboard {
 		top: 50%;
 		transform: translateY(-50%);
-		width: 150px;
+		width: 250px;
 	}
 
 	.leaderboard h3 {
@@ -40,7 +40,6 @@
 		margin: 0;
 		margin-bottom: 10px;
 		font-size: 18px;
-		color: #333;
 	}
 
 	.leaderboard ul {

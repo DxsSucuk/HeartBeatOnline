@@ -45,6 +45,15 @@ public class MainController {
     }
 
     @CrossOrigin(origins = "*", allowedHeaders = "*")
+    @RequestMapping("/next")
+    public ResponseBase<String> getNext() {
+        ResponseBase<String> response = new ResponseBase<>();
+        response.data = Server.getInstance().getNextPull();
+        response.success = true;
+        return response;
+    }
+
+    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/heartbeat")
     public HeartBeatResponse getHeartbeat() {
         HeartBeatResponse heartBeat = new HeartBeatResponse();
@@ -77,7 +86,7 @@ public class MainController {
     public GamblerUnsafeResponse createGambler(@CookieValue(value = "AuthenticKDasDAS_W", required = false) String cookie, HttpServletResponse response) {
         GamblerUnsafeResponse gamblerResponse = new GamblerUnsafeResponse();
         gamblerResponse.success = false;
-        try {
+        /*try {
             if (cookie == null) {
                 response.addCookie(new Cookie("AuthenticKDasDAS_W", "RAWRWARAFWAAGWWTwafdwagagawgaGAWGWAHAWHSD"));
             } else {
@@ -85,7 +94,7 @@ public class MainController {
             }
         } catch (Exception e) {
             return gamblerResponse;
-        }
+        }*/
 
         gamblerResponse.success = true;
 

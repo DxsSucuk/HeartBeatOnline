@@ -18,7 +18,7 @@
 	}
 
 	.heart {
-		font-size: 75px;
+		font-size: 150px;
 		color: red;
 		animation: beat 1s infinite;
 	}

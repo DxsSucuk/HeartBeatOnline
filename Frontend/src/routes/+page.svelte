@@ -3,41 +3,109 @@
 	import Heart from '$lib/heart.svelte';
 	import Leaderboard from '$lib/leaderboard.svelte';
 	import Time from 'svelte-time/Time.svelte';
-	import { goto } from '$app/navigation';
-	import { Accordion, AccordionItem, Avatar, type ModalSettings } from '@skeletonlabs/skeleton';
-	import { getGambles, getHeartBeat, getLeaderboard, type Gambles, type HeartBeat } from '$lib/client';
+	import {
+		Accordion,
+		AccordionItem,
+		Avatar,
+		getToastStore,
+		type ModalComponent,
+		type ModalSettings,
+		type ToastSettings
+	} from '@skeletonlabs/skeleton';
+	import {
+		getGambles,
+		getHeartBeat,
+		getLeaderboard,
+		getNextPull,
+		getSelfGambler,
+		putBet,
+		type Bet,
+		type Gambles,
+		type HeartBeat
+	} from '$lib/client';
+	import gamblerWriteable from '$lib/gamblerWriteable';
 	import { getModalStore } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
+	import Gamblemodal from '$lib/gamblemodal.svelte';
 	let leaderboardAllTime: HeartBeat[] = [];
-	let leaderboardOfToday: HeartBeat[] = []
+	let leaderboardOfToday: HeartBeat[] = [];
 	let lastBeat: HeartBeat;
 	let nextPull: string;
-	let ownBet: number = 0;
 	let bets: Gambles[] = [];
-	
+
 	onMount(async () => {
+		await updateInfo();
+	});
+
+	const toastStore = getToastStore();
+	const modalStore = getModalStore();
+
+	const modalComponent: ModalComponent = { ref: Gamblemodal };
+    const modal: ModalSettings = {
+        type: 'component',
+        component: modalComponent,
+        response: (r: any) => {
+            sendBet(r);
+        },
+    };
+
+	async function sendBet(r: Bet) {
+		let result: boolean = await putBet(r.heartBeat, r.amount);
+		if (result) {
+			toastStore.trigger(success);
+			bets = await getGambles();
+			let newGambler = await getSelfGambler();
+			if (newGambler != undefined) {
+				$gamblerWriteable = newGambler;
+			}
+		} else {
+			toastStore.trigger(failed)
+		}
+	}
+
+	const failed: ToastSettings = {
+		message: 'Broke bitch most likely dunno.',
+		// Provide any utility or variant background style:
+		background: 'variant-filled-error',
+		autohide: true,
+		timeout: 5000
+	};
+
+	const success: ToastSettings = {
+		message: 'Nice bet and good luck!',
+		// Provide any utility or variant background style:
+		background: 'variant-filled-success',
+		autohide: true,
+		timeout: 5000
+	};
+
+	const updated: ToastSettings = {
+		message: 'Fetched the latest data!',
+		// Provide any utility or variant background style:
+		background: 'variant-filled-secondary',
+		autohide: true,
+		timeout: 5000
+	};
+
+	function runUpdater(ms: number) {
+		if (ms < 1000) ms = Date.now() + 300000;
+		setTimeout(() => {
+			updateInfo()
+		}, ms);
+	}
+
+	async function updateInfo() {
 		bets = await getGambles();
-		leaderboardAllTime = await getLeaderboard("all")
-		leaderboardOfToday = await getLeaderboard("day")
+		nextPull = await getNextPull();
+		leaderboardAllTime = await getLeaderboard('all');
+		leaderboardOfToday = await getLeaderboard('day');
 		let beat = await getHeartBeat();
 		if (beat !== undefined) {
 			lastBeat = beat as HeartBeat;
 		}
-	});
-
-	const modalStore = getModalStore();
-
-	const gambleModal: ModalSettings = {
-		type: 'prompt',
-		// Data
-		title: 'How much would you like to gamble?',
-		body: 'Provide the Amount of definitly real cash money ong you did like to gamble.',
-		// Populates the input value and attributes
-		value: '1',
-		valueAttr: { type: 'number', minlength: 1, required: true },
-		// Returns the updated response value
-		response: (r: number) => console.log('response:', r)
-	};
+		toastStore.trigger(updated)
+		runUpdater(Date.parse(nextPull) - Date.now())
+	}
 </script>
 
 <div class="container h-full mx-auto flex justify-center items-center">
@@ -51,19 +119,21 @@
 	</div>
 	<div class="space-y-10 text-center flex flex-col items-center">
 		<Heart />
-		<div id="bpmCounter">{lastBeat !== undefined ? lastBeat.bpm : 'None'}</div>
+		<div id="bpmCounter" class="text-primary-500">
+			<p class="text-5xl">{lastBeat !== undefined ? lastBeat.beat : 'None'}</p>
+		</div>
 		<div id="lastUpdate">
 			<span> Last update: </span>
 			<Time
 				relative
-				timestamp={lastBeat !== undefined ? lastBeat.time : '2024-08-30T22:02:57+00:00'}
+				timestamp={lastBeat !== undefined ? lastBeat.timestamp : '2024-08-30T22:02:57+00:00'}
 			/>
 		</div>
 		<div>
 			<button
 				type="button"
 				class="btn variant-filled-secondary"
-				on:click={() => modalStore.trigger(gambleModal)}
+				on:click={() => modalStore.trigger(modal)}
 			>
 				<span>Gamble!</span>
 			</button>
@@ -79,7 +149,7 @@
 	</div>
 	<div class="footer">
 		<span> Next Data pull: </span>
-		<Time timestamp={nextPull !== undefined ? nextPull : '2024-08-30T22:02:57+00:00'} relative />
+		<Time live={60} timestamp={nextPull} relative />
 	</div>
 	<div class="footer-info">
 		<Accordion class="card p-4 text-token backdrop-blur-lg">
@@ -126,11 +196,13 @@
 						</div>
 						<div class="flex min-w-0 gap-x-4">
 							<div class="min-w-0 flex-auto sm:flex sm:flex-col sm:items-start sm:self-center">
-								<p class="font-semibold leading-6">{entry.name}</p>
+								<p class="font-semibold leading-6">{entry.user.name}</p>
 							</div>
 						</div>
 						<div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end sm:self-center">
-							<p class="text-sm leading-6">{entry.bet + '$ on ' + entry.bpm + 'BPM'}</p>
+							<p class="text-sm leading-6">
+								<span class="text-primary-500">{entry.gambleAmount}</span>$ on <span class="text-primary-500">{entry.heartBeat}</span> BPM
+							</p>
 						</div>
 					</li>
 				{/each}
@@ -147,7 +219,6 @@
 
 	#lastUpdate {
 		font-size: 12px;
-		color: #555;
 		margin-top: 5px;
 	}
 
@@ -155,7 +226,6 @@
 		position: absolute;
 		bottom: 20px;
 		font-size: 12px;
-		color: #555;
 	}
 
 	.footer-info {
