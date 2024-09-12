@@ -1,6 +1,6 @@
 import type { UUID } from 'crypto';
 
-const BASE_PATH = 'http://localhost:8080/';
+const BASE_PATH = 'https://heart-api.presti.me/';
 
 export interface Gambles {
 	user: Gambler;
