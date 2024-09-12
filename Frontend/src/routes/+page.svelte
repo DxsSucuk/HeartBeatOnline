@@ -41,13 +41,13 @@
 	const modalStore = getModalStore();
 
 	const modalComponent: ModalComponent = { ref: Gamblemodal };
-    const modal: ModalSettings = {
-        type: 'component',
-        component: modalComponent,
-        response: (r: any) => {
-            sendBet(r);
-        },
-    };
+	const modal: ModalSettings = {
+		type: 'component',
+		component: modalComponent,
+		response: (r: any) => {
+			sendBet(r);
+		}
+	};
 
 	async function sendBet(r: Bet) {
 		let result: boolean = await putBet(r.heartBeat, r.amount);
@@ -59,7 +59,7 @@
 				$gamblerWriteable = newGambler;
 			}
 		} else {
-			toastStore.trigger(failed)
+			toastStore.trigger(failed);
 		}
 	}
 
@@ -90,7 +90,7 @@
 	function runUpdater(ms: number) {
 		if (ms < 1000) ms = Date.now() + 300000;
 		setTimeout(() => {
-			updateInfo()
+			updateInfo();
 		}, ms);
 	}
 
@@ -103,8 +103,8 @@
 		if (beat !== undefined) {
 			lastBeat = beat as HeartBeat;
 		}
-		toastStore.trigger(updated)
-		runUpdater(Date.parse(nextPull) - Date.now())
+		toastStore.trigger(updated);
+		runUpdater(Date.parse(nextPull) - Date.now());
 	}
 </script>
 
@@ -201,7 +201,8 @@
 						</div>
 						<div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end sm:self-center">
 							<p class="text-sm leading-6">
-								<span class="text-primary-500">{entry.gambleAmount}</span>$ on <span class="text-primary-500">{entry.heartBeat}</span> BPM
+								<span class="text-primary-500">{entry.gambleAmount}</span>$ on
+								<span class="text-primary-500">{entry.heartBeat}</span> BPM
 							</p>
 						</div>
 					</li>

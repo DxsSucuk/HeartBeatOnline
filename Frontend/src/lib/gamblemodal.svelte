@@ -14,7 +14,7 @@
 	// Form Data
 	const formData: Bet = {
 		heartBeat: 70,
-		amount: 10,
+		amount: 10
 	};
 
 	// We've created a custom submit function to pass the response and close the modal.
