@@ -13,8 +13,10 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -54,6 +56,9 @@ public class Server {
 
     @Getter
     private final List<Gambles> gamblesOfToday = new ArrayList<>();
+
+    @Getter
+    private final List<String> noCreateList = new ArrayList<>();
 
     private ZonedDateTime nextPull;
 
@@ -379,5 +384,29 @@ public class Server {
                 .mapToObj(characters::charAt)
                 .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append)
                 .toString();
+    }
+
+    private static String bytesToHex(byte[] hash) {
+        StringBuilder hexString = new StringBuilder(2 * hash.length);
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+    public String createHash(String value) {
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        byte[] encodedhash = digest.digest(
+                value.getBytes(StandardCharsets.UTF_8));
+        return bytesToHex(encodedhash);
     }
 }

@@ -1,18 +1,16 @@
 package de.presti.heartmybeatonline.controller;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import de.presti.heartmybeatonline.Server;
 import de.presti.heartmybeatonline.controller.response.*;
 import de.presti.heartmybeatonline.dto.Gambler;
 import de.presti.heartmybeatonline.dto.GamblerSafe;
-import de.presti.heartmybeatonline.dto.HeartBeat;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.ui.Model;
-import org.springframework.stereotype.Controller;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 public class MainController {
 
@@ -81,10 +79,23 @@ public class MainController {
 
     @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/gambler/create")
-    public GamblerUnsafeResponse createGambler(@CookieValue(value = "AuthenticKDasDAS_W", required = false) String cookie, HttpServletResponse response) {
+    public GamblerUnsafeResponse createGambler(@CookieValue(value = "AuthenticKDasDAS_W", required = false) String cookie, HttpServletResponse response, HttpServletRequest request) {
         GamblerUnsafeResponse gamblerResponse = new GamblerUnsafeResponse();
         gamblerResponse.success = false;
-        /*try {
+        String ip = getClientIpAddress(request);
+        String ipHash = Server.getInstance().createHash(ip);
+        log.info("Creating gambler");
+        log.info("IP: {}", ip);
+        log.info("Cookie: {}", cookie);
+
+        if (Server.getInstance().getNoCreateList().contains(ipHash)) {
+            gamblerResponse.message = "You are banned from creating a gambler.";
+            return gamblerResponse;
+        } else {
+            Server.getInstance().getNoCreateList().add(ipHash);
+        }
+
+        try {
             if (cookie == null) {
                 response.addCookie(new Cookie("AuthenticKDasDAS_W", "RAWRWARAFWAAGWWTwafdwagagawgaGAWGWAHAWHSD"));
             } else {
@@ -92,7 +103,7 @@ public class MainController {
             }
         } catch (Exception e) {
             return gamblerResponse;
-        }*/
+        }
 
         gamblerResponse.success = true;
 
@@ -107,5 +118,31 @@ public class MainController {
         gambleResponse.success = Server.getInstance().gambleMoney(userId, beat, amount, token);
         gambleResponse.message = "Broke bitch!";
         return gambleResponse;
+    }
+
+    private static final String[] HEADERS_TO_TRY = {
+            "X-Forwarded-For",
+            "Proxy-Client-IP",
+            "CF-Connecting-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_X_FORWARDED_FOR",
+            "HTTP_X_FORWARDED",
+            "HTTP_X_CLUSTER_CLIENT_IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_FORWARDED_FOR",
+            "HTTP_FORWARDED",
+            "HTTP_VIA",
+            "REMOTE_ADDR"};
+
+    public static String getClientIpAddress(HttpServletRequest request) {
+        for (String header : HEADERS_TO_TRY) {
+            String ip = request.getHeader(header);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
+        }
+
+        log.warn("Couldn't find IP from header, will instead use remote address.");
+        return request.getRemoteAddr();
     }
 }

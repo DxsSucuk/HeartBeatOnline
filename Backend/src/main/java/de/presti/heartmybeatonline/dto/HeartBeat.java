@@ -15,7 +15,7 @@ public class HeartBeat {
         HeartBeat beat = new HeartBeat();
         beat.beat = json.has("beat") ? json.get("beat").getAsDouble() : json.get("bpm").getAsDouble();
         beat.timestamp = json.get("timestamp").getAsString();
-        beat.source = json.get("source").getAsString();
+        beat.source = json.has("source") ? json.get("source").getAsString() : "awake";
         return beat;
     }
 
