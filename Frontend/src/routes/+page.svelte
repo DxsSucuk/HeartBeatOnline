@@ -142,7 +142,7 @@
 	<div style="position: absolute; left: 20px;">
 		<Leaderboard
 			title="Leaderboard Today"
-			entries={leaderboardAllTime}
+			entries={leaderboardOfToday}
 			format="hh:mm"
 			relative={false}
 		/>
