@@ -134,6 +134,7 @@
 				type="button"
 				class="btn variant-filled-secondary"
 				on:click={() => modalStore.trigger(modal)}
+				disabled={$gamblerWriteable == undefined}
 			>
 				<span>Gamble!</span>
 			</button>
