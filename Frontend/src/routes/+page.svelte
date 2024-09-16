@@ -153,7 +153,7 @@
 	</div>
 	<div class="footer-info">
 		<Accordion class="card p-4 text-token backdrop-blur-lg">
-			<AccordionItem open>
+			<AccordionItem>
 				<svelte:fragment slot="lead"
 					><i class="fa-solid fa-dice text-xl w-6 text-center"></i></svelte:fragment
 				>
