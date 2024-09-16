@@ -89,6 +89,7 @@
 
 	function runUpdater(ms: number) {
 		if (ms < 1000) ms = Date.now() + 300000;
+		console.log("Delay set to " + ms)
 		setTimeout(() => {
 			updateInfo();
 		}, ms);
