@@ -58,12 +58,20 @@
 				$gamblerWriteable = newGambler;
 			}
 		} else {
-			toastStore.trigger(failed);
+			toastStore.trigger(failed_general);
 		}
 	}
 
-	const failed: ToastSettings = {
+	const failed_general: ToastSettings = {
 		message: 'Broke bitch most likely dunno.',
+		// Provide any utility or variant background style:
+		background: 'variant-filled-error',
+		autohide: true,
+		timeout: 5000
+	};
+
+	const failed_api: ToastSettings = {
+		message: 'Some Issue with the API?',
 		// Provide any utility or variant background style:
 		background: 'variant-filled-error',
 		autohide: true,
@@ -110,8 +118,14 @@
 		if (beat !== undefined) {
 			lastBeat = beat as HeartBeat;
 		}
-		toastStore.trigger(updated);
-		runUpdater(Date.parse(nextPull) - Date.now());
+		if (nextPull == null || nextPull == undefined || nextPull == '2024-08-30T22:02:57+00:00') {
+			toastStore.trigger(failed_api);
+			console.log("Failed, waiting for 10 minutes")
+			runUpdater(10 * 60 * 1000)
+		} else {
+			toastStore.trigger(updated);
+			runUpdater(Date.parse(nextPull) - Date.now());
+		}
 	}
 </script>
 
