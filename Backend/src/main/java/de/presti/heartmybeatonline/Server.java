@@ -2,7 +2,6 @@ package de.presti.heartmybeatonline;
 
 import com.google.gson.*;
 import de.presti.heartmybeatonline.dto.Gambler;
-import de.presti.heartmybeatonline.dto.GamblerSafe;
 import de.presti.heartmybeatonline.dto.Gambles;
 import de.presti.heartmybeatonline.dto.HeartBeat;
 import lombok.Getter;
@@ -36,9 +35,6 @@ public class Server {
     @Setter
     @Getter
     private String authToken;
-
-    @Getter
-    private String lastToken;
 
     @Getter
     private final int minutesToWait = 5, leaderboardSize = 3, defaultMoney = 1000, minimumBet = 1;
@@ -93,29 +89,29 @@ public class Server {
         resetLeaderboard = new Thread(() -> {
             while (resetLeaderboard != null && !resetLeaderboard.isInterrupted()) {
                 ZonedDateTime now = ZonedDateTime.now();
-                if (now.getHour() == 0 && now.getMinute() == 0) {
-                    log.info("Resetting leaderboard...");
-                    lastToken = null;
-                    double highestBeat = leaderboardOfToday.get(0).beat;
-                    double prizePool = gamblesOfToday.stream().mapToDouble(Gambles::getGambleAmount).sum();
-                    List<Gambles> winners = gamblesOfToday.stream().filter(gamble -> gamble.heartBeat == highestBeat).toList();
-                    if (!winners.isEmpty()) {
-                        int prize = (int) (prizePool / winners.size());
-                        for (Gambles winner : winners) {
-                            Gambler gambler = getGambler(winner.user.id.toString());
-                            gambler.money += prize;
-                            saveGambler(gambler);
-                        }
-                    }
-                    leaderboardOfToday.clear();
-                    gamblesOfToday.clear();
-                }
+                ZonedDateTime nextReset = now.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
 
+                // sleep until next reset.
                 try {
-                    Thread.sleep(Duration.ofMinutes(1).toMillis());
+                    Thread.sleep((nextReset.toEpochSecond() - now.toEpochSecond()) * 1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+
+                log.info("Resetting leaderboard...");
+                double highestBeat = leaderboardOfToday.get(0).beat;
+                double prizePool = gamblesOfToday.stream().mapToDouble(Gambles::getGambleAmount).sum();
+                List<Gambles> winners = gamblesOfToday.stream().filter(gamble -> gamble.heartBeat <= highestBeat + 5 && gamble.heartBeat >= highestBeat - 5).toList();
+                if (!winners.isEmpty()) {
+                    int prize = (int) (prizePool / winners.size());
+                    for (Gambles winner : winners) {
+                        Gambler gambler = getGambler(winner.user.id.toString());
+                        gambler.money += prize;
+                        saveGambler(gambler);
+                    }
+                }
+                leaderboardOfToday.clear();
+                gamblesOfToday.clear();
             }
         });
 
@@ -123,8 +119,7 @@ public class Server {
 
         amIAliveOrSomething = new Thread(() -> {
             while (amIAliveOrSomething != null && !amIAliveOrSomething.isInterrupted()) {
-                beatsOfToday.clear();
-                loadAllBeatsOfToday(lastToken);
+                loadAllBeatsOfToday();
 
                 nextPull = ZonedDateTime.now().plusMinutes(minutesToWait);
                 try {
@@ -137,33 +132,18 @@ public class Server {
         amIAliveOrSomething.start();
     }
 
-    public void loadAllBeatsOfToday(String token) {
-        lastToken = token;
-        log.info("Loading beats of today with token {}", token);
-        JsonObject apiObject = requestBeats(token, ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0), ZonedDateTime.now()).getAsJsonObject();
-        if (apiObject.isJsonNull()) return;
-        if (!apiObject.has("data")) return;
+    public void loadAllBeatsOfToday() {
+        beatsOfToday.clear();
+        log.info("Loading beats of today");
 
-        JsonElement dataArray = apiObject.get("data");
-
-        if (dataArray.isJsonArray() && !dataArray.getAsJsonArray().isEmpty()) {
-            log.info("Found {} entries with token {}.", dataArray.getAsJsonArray().size(), token);
-            for (JsonElement jsonElement : dataArray.getAsJsonArray()) {
-                if (!jsonElement.isJsonObject()) continue;
-                JsonObject jsonObject = jsonElement.getAsJsonObject();
-                addToBeatsOfToday(HeartBeat.fromJson(jsonObject));
-            }
-        }
-
-        if (apiObject.has("next_token") && !apiObject.get("next_token").isJsonNull()) {
-            loadAllBeatsOfToday(apiObject.get("next_token").getAsString());
-        }
+        List<HeartBeat> beats = requestHeartBeats(null, ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0), ZonedDateTime.now());
+        beats.forEach(this::addToBeatsOfToday);
     }
 
     public void addToBeatsOfToday(HeartBeat beat) {
         if (beatsOfToday.stream().anyMatch(heartBeat -> heartBeat.timestamp.equals(beat.timestamp))) return;
 
-        if (leaderboardOfToday.isEmpty() || leaderboardOfToday.size() < leaderboardSize) {
+        if (leaderboardOfToday.size() < leaderboardSize) {
             addToLeaderboard(beat);
         } else {
             boolean hasHigherValue = false;
@@ -178,7 +158,7 @@ public class Server {
                 ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfToday);
                 addToLeaderboard(beat);
                 leaderboardOfToday.sort(comparator);
-                leaderboardOfToday.remove(leaderboardOfToday.size()-1);
+                leaderboardOfToday.remove(leaderboardOfToday.size() - 1);
                 onDailyLeaderboardUpdate(previous, leaderboardOfToday, beat);
             }
         }
@@ -194,7 +174,7 @@ public class Server {
 
         if (leaderboardOfAllTime.stream().anyMatch(beat -> beat.timestamp.equals(heartBeat.timestamp))) return;
 
-        if (leaderboardOfAllTime.isEmpty() || leaderboardOfAllTime.size() < leaderboardSize) {
+        if (leaderboardOfAllTime.size() < leaderboardSize) {
             leaderboardOfAllTime.add(heartBeat);
             saveAllTimeLeaderboard();
         } else {
@@ -210,7 +190,7 @@ public class Server {
                 ArrayList<HeartBeat> previous = new ArrayList<>(leaderboardOfAllTime);
                 leaderboardOfAllTime.add(heartBeat);
                 leaderboardOfAllTime.sort(comparator);
-                leaderboardOfAllTime.remove(leaderboardOfAllTime.size()-1);
+                leaderboardOfAllTime.remove(leaderboardOfAllTime.size() - 1);
                 onAllTimeLeaderboardUpdate(previous, leaderboardOfAllTime, heartBeat);
                 saveAllTimeLeaderboard();
             }
@@ -319,10 +299,6 @@ public class Server {
         return createGambler();
     }
 
-    public GamblerSafe getGamblerSafe(String id) {
-        return GamblerSafe.fromGambler(getGambler(id));
-    }
-
     public boolean existGambler(String id) {
         UUID uuid = null;
         try {
@@ -361,6 +337,30 @@ public class Server {
         gamblesOfToday.add(gamble);
 
         return true;
+    }
+
+    public List<HeartBeat> requestHeartBeats(String token, ZonedDateTime start, ZonedDateTime end) {
+        ArrayList<HeartBeat> heartBeats = new ArrayList<>();
+        JsonObject apiObject = requestBeats(token, start, end).getAsJsonObject();
+        if (apiObject.isJsonNull()) return heartBeats;
+        if (!apiObject.has("data")) return heartBeats;
+
+        JsonElement dataArray = apiObject.get("data");
+
+        if (dataArray.isJsonArray() && !dataArray.getAsJsonArray().isEmpty()) {
+            log.info("Found {} entries with token {}.", dataArray.getAsJsonArray().size(), token);
+            for (JsonElement jsonElement : dataArray.getAsJsonArray()) {
+                if (!jsonElement.isJsonObject()) continue;
+                JsonObject jsonObject = jsonElement.getAsJsonObject();
+                heartBeats.add(HeartBeat.fromJson(jsonObject));
+            }
+        }
+
+        if (apiObject.has("next_token") && !apiObject.get("next_token").isJsonNull()) {
+            heartBeats.addAll(requestHeartBeats(apiObject.get("next_token").getAsString(), start, end));
+        }
+
+        return heartBeats;
     }
 
     public String generateName() {

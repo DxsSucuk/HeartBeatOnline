@@ -1,4 +1,3 @@
-<!-- YOU CAN DELETE EVERYTHING IN THIS PAGE -->
 <script lang="ts">
 	import Heart from '$lib/heart.svelte';
 	import Leaderboard from '$lib/leaderboard.svelte';
@@ -87,8 +86,12 @@
 		timeout: 5000
 	};
 
+	var updaterSet = false;
+
 	function runUpdater(ms: number) {
-		if (ms < 1000) ms = Date.now() + 300000;
+		if (updaterSet) return;
+		updaterSet = true;
+		if (ms < 5000) ms = Date.now() + 10000;
 		console.log("Delay set to " + ms)
 		setTimeout(() => {
 			updateInfo();
@@ -96,8 +99,11 @@
 	}
 
 	async function updateInfo() {
+		updaterSet = false;
 		bets = await getGambles();
+		console.log("Calling bets.")
 		nextPull = await getNextPull();
+		console.log("Calling next = " + nextPull)
 		leaderboardAllTime = await getLeaderboard('all');
 		leaderboardOfToday = await getLeaderboard('day');
 		let beat = await getHeartBeat();
@@ -121,13 +127,13 @@
 	<div class="space-y-10 text-center flex flex-col items-center">
 		<Heart />
 		<div id="bpmCounter" class="text-primary-500">
-			<p class="text-5xl">{lastBeat !== undefined ? lastBeat.beat : 'None'}</p>
+			<p class="text-5xl">{lastBeat !== undefined && lastBeat !== null ? lastBeat.beat : 'None'}</p>
 		</div>
 		<div id="lastUpdate">
 			<span> Last update: </span>
 			<Time
 				relative
-				timestamp={lastBeat !== undefined ? lastBeat.timestamp : '2024-08-30T22:02:57+00:00'}
+				timestamp={lastBeat !== undefined && lastBeat !== null ? lastBeat.timestamp : '2024-08-30T22:02:57+00:00'}
 			/>
 		</div>
 		<div>
@@ -140,6 +146,8 @@
 				<span>Gamble!</span>
 			</button>
 		</div>
+		
+		<a href='https://ko-fi.com/T6T4AC652' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi5.png?v=6' alt='Buy Me a Coffee at ko-fi.com' /></a>
 	</div>
 	<div style="position: absolute; left: 20px;">
 		<Leaderboard

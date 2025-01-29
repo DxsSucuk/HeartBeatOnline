@@ -27,7 +27,6 @@ public class MainController {
         return response;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/leaderboard")
     public HeartLeaderboardList getLeaderboard(@RequestParam(value = "typ", defaultValue = "day") String typ) {
         HeartLeaderboardList list = new HeartLeaderboardList();
@@ -40,7 +39,6 @@ public class MainController {
         return list;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/next")
     public ResponseBase<String> getNext() {
         ResponseBase<String> response = new ResponseBase<>();
@@ -49,7 +47,6 @@ public class MainController {
         return response;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/heartbeat")
     public HeartBeatResponse getHeartbeat() {
         HeartBeatResponse heartBeat = new HeartBeatResponse();
@@ -58,7 +55,6 @@ public class MainController {
         return heartBeat;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/gambleboard")
     public GambleLeaderboardList getGamblers() {
         GambleLeaderboardList gamblerResponse = new GambleLeaderboardList();
@@ -67,7 +63,6 @@ public class MainController {
         return gamblerResponse;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/gambler")
     public GamblerResponse getGambler(@RequestParam(value = "id", defaultValue = "RAWRXD") String userId, HttpServletResponse response) {
         GamblerResponse gamblerResponse = new GamblerResponse();
@@ -77,7 +72,6 @@ public class MainController {
         return gamblerResponse;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/gambler/create")
     public GamblerUnsafeResponse createGambler(@CookieValue(value = "AuthenticKDasDAS_W", required = false) String cookie, HttpServletResponse response, HttpServletRequest request) {
         GamblerUnsafeResponse gamblerResponse = new GamblerUnsafeResponse();
@@ -111,9 +105,8 @@ public class MainController {
         return gamblerResponse;
     }
 
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @RequestMapping("/gamble")
-    public GambleResponse gamble(@RequestParam(value = "id", defaultValue = "RAWRXD") String userId, @RequestParam(value = "beat", defaultValue = "60") int beat, @RequestParam(value = "amount", defaultValue = "0") int amount, @RequestParam(value ="token", defaultValue = "RAWRXD") String token) {
+    public GambleResponse gamble(@RequestParam(value = "id", defaultValue = "RAWRXD") String userId, @RequestParam(value = "beat", defaultValue = "60") int beat, @RequestParam(value = "amount", defaultValue = "0") int amount, @RequestParam(value = "token", defaultValue = "RAWRXD") String token) {
         GambleResponse gambleResponse = new GambleResponse();
         gambleResponse.success = Server.getInstance().gambleMoney(userId, beat, amount, token);
         gambleResponse.message = "Broke bitch!";
